@@ -288,4 +288,5 @@ if __name__ == '__main__':
     preparator.drop_attributes(attrs_to_prune)
     preparator.remove_missing_values()
     preparator.one_hot_encoding_categorical()
-    train_data, test_data = preparator.split_dataset()
+    # Next line is commented so that we prevent generation of new datasets
+    # train_data, test_data = preparator.split_dataset()
