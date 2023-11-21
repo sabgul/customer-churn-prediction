@@ -10,7 +10,6 @@
 
 'External packages'
 import argparse
-import numpy as np
 import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
@@ -19,6 +18,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
+import numpy as np
 from scipy import stats
 from scipy.stats import ttest_ind, f_oneway
 
@@ -50,7 +50,7 @@ class DatasetPreparator:
         missing_values = dataset.isnull().sum()
 
         # Display columns with missing values
-        print(f'Columns with missing values:{missing_values[missing_values > 0]}\n')
+        print(f'Columns with missing values: {missing_values[missing_values > 0]}\n')
 
         # Replace missing values if detected. In case of numerical values,
         # use the mean value, in case of categorical, use the most frequent value.
@@ -82,7 +82,6 @@ class DatasetPreparator:
         self.df = pd.get_dummies(self.df, columns=more_than_two_unique_values, drop_first=True)
         self.df = self.df.replace({True: 1, False: 0, 'Yes': 1, 'No': 0, 'Male': 0, 'Female': 1})
 
-        print(f'Encoded dataset:\n{self.df}\n')
         return self.df
 
     # Use label encoding to transform categorical into numeric.
@@ -142,12 +141,17 @@ class FeatureAnalyzer:
     def get_dataset_characteristics(self) -> None:
         self.df.columns = map(str.lower, self.df.columns)
         print(f'Dimensions of the dataset: {self.df.shape}\n')
+        print(f'-----------------------------')
         print(f'Feature information:\n{self.df.info}\n')
 
         # Get description of the dataset to determine most frequent values,
         # number of unique values for each parameter, and identify possible missing values
         data_description = self.df.describe(include='all').T
+        print(f'-----------------------------')
         print(f"Descriptive statistics of the dataset:\n{data_description}\n")
+
+        print(f'-----------------------------')
+        print(f'Columns: {self.df.columns} and their types: {self.df.columns.dtype}\n')
 
         # Get information about categorical and numerical attributes
         categorical_vars = []
@@ -157,31 +161,29 @@ class FeatureAnalyzer:
                 categorical_vars.append(column)
             else:
                 numerical_vars.append(column)
-        print(f'Categorical variables:{categorical_vars}\n')
-        print(f'Numerical variables:{numerical_vars}\n')
+        print(f'-----------------------------')
+        print(f'Categorical variables:\n{categorical_vars}\n')
+        print(f'Numerical variables:\n{numerical_vars}\n')
+
+        self.df['totalcharges'] = pd.to_numeric(self.df['totalcharges'], errors='coerce')
+        self.df['monthlycharges'] = pd.to_numeric(self.df['monthlycharges'], errors='coerce')
 
         # Get number of unique values for each column
         unique_counts = self.df.nunique()
+        print(f'-----------------------------')
         print(f'Number of unique values for each column:\n{unique_counts}\n')
+        print(f'-----------------------------')
+        print(f"Who left more according to the gender?\n{self.df.groupby('gender')['churn'].value_counts().unstack()}")
+        print(f'-----------------------------')
+        print(f"How many years were they with company before leaving?\n{self.df.groupby(['gender', 'churn'])['tenure'].agg(['mean'])}")
+        print(f'-----------------------------')
+        print(f"Min, max and mean according to the dependent variable:\n{self.df.groupby('churn').agg({'tenure': ['min', 'mean', 'max'], 'monthlycharges': ['min', 'mean', 'max'], 'totalcharges': ['min', 'mean', 'max']})}")
 
-        # TODO Drop customer id attribute
-        # self.df = self.df.drop('customerID', axis=1)
-
-    # TODO
     def identify_outliers(self) -> [str]:
         outliers_columns = []
 
-        # Iterate through numerical columns
-        # print(f"Unique values in monthly: {self.df['monthlycharges'].unique()}")
+        print(f'----- OUTLIER IDENTIFICATION:')
 
-        print(f'Columns: {self.df.columns} and their types: {self.df.columns.dtype}\n')
-        # print(f"monthlycharges dtype: {self.df['monthlycharges'].dtype}\n")
-        # print(f"tenure dtype: {self.df['tenure'].dtype}\n")
-        # print(f"senior dtype: {self.df['seniorcitizen'].dtype}\n")
-
-        # self.df['monthlycharges'] = pd.to_numeric(self.df['monthlycharges'], errors='coerce')
-
-        # TODO figure out why monthlycharges are skipped
         for column in self.df.select_dtypes(exclude='object').columns:
             print(f"Processing numeric column: {column}")
             # Skip columns with only values [0, 1]
@@ -213,9 +215,9 @@ class FeatureAnalyzer:
             else:
                 print(f"No outliers detected in column {column}.\n")
 
+            print(f'-----------------------------')
             return outliers_columns
 
-    # TODO more graphs
     def correlation_analysis(self, dataset=None) -> None:
         if dataset is None:
             dataset = self.df
@@ -226,6 +228,14 @@ class FeatureAnalyzer:
         plt.title("Correlation Matrix")
         plt.show()
         pass
+
+    def visualize_data(self) -> None:
+        fig, axarr = plt.subplots(2, 2, figsize=(20, 12))
+        sn.boxplot(y='gender', x='churn', hue='churn', data=self.df, ax=axarr[0][0])
+        sn.boxplot(y='tenure', x='churn', hue='churn', data=self.df, ax=axarr[0][1])
+        sn.boxplot(y='monthlycharges', x='churn', hue='churn', data=self.df, ax=axarr[1][0])
+        sn.boxplot(y='totalcharges', x='churn', hue='churn', data=self.df, ax=axarr[1][1])
+        plt.show()
 
     def tree_feature_importance_analysis(self, dataset=None) -> [str]:
         if dataset is None:
@@ -243,7 +253,8 @@ class FeatureAnalyzer:
 
         selected_features = [feature for feature, importance in zip(feature_names, feature_importances) if
                              importance < 0.025]
-
+        print(f'-----------------------------')
+        print(f'------ FEATURE IMPORTANCE ASSESMENT:')
         for feature, importance in zip(feature_names, feature_importances):
             print(f"Feature {feature}: Importance {importance}")
 
@@ -258,6 +269,7 @@ if __name__ == '__main__':
 
     analyzer.get_dataset_characteristics()
     outliers_cols = analyzer.identify_outliers()
+    analyzer.visualize_data()
 
     # ----- Prepare dummy dataset for attribute importance analysis
     label_encoded_dataset = preparator.label_encode_categorical()
