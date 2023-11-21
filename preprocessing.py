@@ -14,8 +14,13 @@ import numpy as np
 import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
-from scipy import stats
 from typing import Optional
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+from scipy import stats
+from scipy.stats import ttest_ind, f_oneway
 
 
 def parse_args() -> argparse.Namespace:
@@ -37,23 +42,26 @@ class DatasetPreparator:
         self.csv_path = csv_path
         self.df = pd.read_csv(self.csv_path)
 
-    def remove_missing_values(self) -> Optional[pd.DataFrame]:
+    def remove_missing_values(self, dataset=None) -> Optional[pd.DataFrame]:
+        if dataset is None:
+            dataset = self.df
+
         # Check for missing values
-        missing_values = self.df.isnull().sum()
+        missing_values = dataset.isnull().sum()
 
         # Display columns with missing values
         print(f'Columns with missing values:{missing_values[missing_values > 0]}\n')
 
         # Replace missing values if detected. In case of numerical values,
         # use the mean value, in case of categorical, use the most frequent value.
-        self.df = (
-            self.df.apply(
+        dataset = (
+            dataset.apply(
                 lambda x: x.fillna(x.mean()) if pd.api.types.is_numeric_dtype(x) else x.fillna(x.mode().iloc[0]))
             if any(missing_values > 0)
-            else self.df
+            else dataset
         )
 
-        return self.df
+        return dataset
 
     # TODO handle outliers
     def handle_outliers(self, outliers_cols) -> Optional[pd.DataFrame]:
@@ -62,24 +70,66 @@ class DatasetPreparator:
 
     # Use one hot encoding to avoid imposing ordinal relationships.
     # This is necessary for latter use of Bayesian networks.
-    # TODO transform yes and no into 0 and 1
-    def transform_categorical(self) -> Optional[pd.DataFrame]:
-        self.df = pd.get_dummies(self.df, drop_first=True)
+    def one_hot_encoding_categorical(self) -> Optional[pd.DataFrame]:
+        # print(f'COLUMNS WHICH ARE PRESENT: {self.df.columns}\n')
+        self.df['TotalCharges'] = pd.to_numeric(self.df['TotalCharges'], errors='coerce')
+        self.df['MonthlyCharges'] = pd.to_numeric(self.df['MonthlyCharges'], errors='coerce')
+
+        categorical_cols = self.df.select_dtypes(include=['object']).columns
+        more_than_two_unique_values = [col for col in categorical_cols if len(self.df[col].unique()) > 2]
+
+        # Apply one-hot encoding only for selected categorical columns
+        self.df = pd.get_dummies(self.df, columns=more_than_two_unique_values, drop_first=True)
+        self.df = self.df.replace({True: 1, False: 0, 'Yes': 1, 'No': 0, 'Male': 0, 'Female': 1})
+
         print(f'Encoded dataset:\n{self.df}\n')
         return self.df
 
-    def drop_attributes(self, attributes) -> Optional[pd.DataFrame]:
-        # TODO drop unnecessary values
-        # drop_values(list[]) -> identified by exploratory data analysis
+    # Use label encoding to transform categorical into numeric.
+    # Used for identifying importance of variables with RandomForest.
+    def label_encode_categorical(self) -> Optional[pd.DataFrame]:
+        data = self.df
 
+        data['TotalCharges'] = pd.to_numeric(self.df['TotalCharges'], errors='coerce')
+        data['MonthlyCharges'] = pd.to_numeric(self.df['MonthlyCharges'], errors='coerce')
+
+        if 'customerID' in data.columns:
+            data = data.drop('customerID', axis=1)
+        categorical_cols = data.select_dtypes(include=['object']).columns
+        more_than_two_unique_values = [col for col in categorical_cols if len(self.df[col].unique()) > 2]
+
+        le = LabelEncoder()
+        for column in more_than_two_unique_values:
+            data[column] = le.fit_transform(data[column])
+        data = data.replace({True: 1, False: 0, 'Yes': 1, 'No': 0, 'Male': 0, 'Female': 1})
+
+        return data
+
+    def drop_attributes(self, attributes) -> Optional[pd.DataFrame]:
+        self.df.drop(columns=attributes, inplace=True)
+        if 'customerID' in self.df.columns:
+            self.df = self.df.drop('customerID', axis=1)
         return self.df
 
-    def split_dataset(self, processed_dataset) -> Optional[pd.DataFrame]:
-        # TODO save datasets into data/train and data/test
-        pass
+    def split_dataset(self, test_size=0.2, random_state=None):
+        x = self.df.drop('Churn', axis=1)
+        y = self.df['Churn']
+
+        # Split the dataset
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=random_state)
+
+        # Combine features and target variable for both train and test sets
+        train = pd.concat([x_train, y_train], axis=1)
+        test = pd.concat([x_test, y_test], axis=1)
+
+        # commented to avoid generating new distribution
+        train.to_csv('data/train_data.csv', index=False)
+        test.to_csv('data/test_data.csv', index=False)
+
+        return train, test
 
 
-class ExploratoryAnalyzer:
+class FeatureAnalyzer:
     """
     Class containing helper functions for performing exploratory data analysis.
     This analysis identifies which variables are important in the dataset, and which
@@ -114,9 +164,10 @@ class ExploratoryAnalyzer:
         unique_counts = self.df.nunique()
         print(f'Number of unique values for each column:\n{unique_counts}\n')
 
-        # Drop customer id attribute
-        self.df = self.df.drop('customerid', axis=1)
+        # TODO Drop customer id attribute
+        # self.df = self.df.drop('customerID', axis=1)
 
+    # TODO
     def identify_outliers(self) -> [str]:
         outliers_columns = []
 
@@ -164,36 +215,58 @@ class ExploratoryAnalyzer:
 
             return outliers_columns
 
-    def correlation_analysis(self) -> None:
+    # TODO more graphs
+    def correlation_analysis(self, dataset=None) -> None:
+        if dataset is None:
+            dataset = self.df
+        correlation_matrix = dataset.corr()
+
+        plt.figure(figsize=(12, 10))
+        sn.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5, annot_kws={"size": 7},)
+        plt.title("Correlation Matrix")
+        plt.show()
         pass
+
+    def tree_feature_importance_analysis(self, dataset=None) -> [str]:
+        if dataset is None:
+            dataset = self.df
+        x = dataset.drop('Churn', axis=1)
+        y = dataset['Churn']
+
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+
+        rf_model = RandomForestClassifier()
+        rf_model.fit(x_train, y_train)
+
+        feature_importances = rf_model.feature_importances_
+        feature_names = x.columns
+
+        selected_features = [feature for feature, importance in zip(feature_names, feature_importances) if
+                             importance < 0.025]
+
+        for feature, importance in zip(feature_names, feature_importances):
+            print(f"Feature {feature}: Importance {importance}")
+
+        return selected_features
+
 
 if __name__ == '__main__':
     args = parse_args()
-    analyzer = ExploratoryAnalyzer(args.csv_path)
+
+    analyzer = FeatureAnalyzer(args.csv_path)
+    preparator = DatasetPreparator(args.csv_path)
 
     analyzer.get_dataset_characteristics()
     outliers_cols = analyzer.identify_outliers()
-    # identify_unnecessary_attrs
 
-    preparator = DatasetPreparator(args.csv_path)
+    # ----- Prepare dummy dataset for attribute importance analysis
+    label_encoded_dataset = preparator.label_encode_categorical()
+    label_encoded_dataset = preparator.remove_missing_values(label_encoded_dataset)
+    analyzer.correlation_analysis(label_encoded_dataset)
+    attrs_to_prune = analyzer.tree_feature_importance_analysis(label_encoded_dataset)
+
+    # ----- Prepare actual dataset
+    preparator.drop_attributes(attrs_to_prune)
     preparator.remove_missing_values()
-    preparator.handle_outliers(outliers_cols)
-    # preparator.drop_attributes()
-    preparator.transform_categorical()
-    # train_dataset, test_dataset = preparator.split_dataset()
-
-
-# 1 exploratory analysis (Understand the distribution of variables.
-# Identify outliers, missing values, and patterns in the data.
-# Explore relationships between variables.
-# Decide which features are relevant and whether any features need transformation.)
-
-# 2 Handle missing values and address outliers
-
-# 3 Feature engineering (create new features if needed, transform existing)
-
-# 4 Drop Unnecessary Features
-
-# 5 One hot encoding (make sure the resulting values are purely numerical)
-
-# 6 Dataset splitting
+    preparator.one_hot_encoding_categorical()
+    train_data, test_data = preparator.split_dataset()
