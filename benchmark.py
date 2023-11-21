@@ -48,18 +48,6 @@ class BenchmarkTrainer:
         # Initialize the logistic regression model
         logistic_model = LogisticRegression(random_state=42, max_iter=1000)
 
-        # if self.train_df.isna().any().any():
-        #     print("There is at least one NaN value in the DataFrame.")
-        #     nan_coordinates = np.where(self.train_df.isna())
-        #
-        #     # Print the row and column indices of NaN values
-        #     print("Coordinates of NaN values:")
-        #     for row, col in zip(*nan_coordinates):
-        #         print(f"Row: {row}, Column: {self.train_df.columns[col]}")
-        # else:
-        #     print("There are no NaN values in the DataFrame.")
-
-        # TODO input X contains NaN
         # Train the model
         logistic_model.fit(x_train, y_train)
 
