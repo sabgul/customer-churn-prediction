@@ -175,21 +175,16 @@ class FeatureAnalyzer:
         print(f'-----------------------------')
         print(f"Min, max and mean according to the dependent variable:\n{self.df.groupby('churn').agg({'tenure': ['min', 'mean', 'max'], 'monthlycharges': ['min', 'mean', 'max'], 'totalcharges': ['min', 'mean', 'max']})}")
 
-    # TODO tenure and totalcharges seem to have outliers
-    # TODO find out why totalcharges and monthly charges are ignored
     def identify_outliers(self) -> [str]:
         outliers_columns = []
-        num_vars = []
+        # num_cols = ['monthlycharges', 'tenure', 'totalcharges', 'seniorcitizen']
 
         self.df['totalcharges'] = pd.to_numeric(self.df['totalcharges'], errors='coerce')
         self.df['monthlycharges'] = pd.to_numeric(self.df['monthlycharges'], errors='coerce')
-        for column in self.df.columns:
-            if self.df[column].dtype != 'object':
-                num_vars.append(column)
 
         print(f'----- OUTLIER IDENTIFICATION:')
-        for column in num_vars:
-            print(f'!!!!>>>>>>> NUM COL: {column}\n')
+        for column in self.df.select_dtypes(exclude='object').columns:
+            print(f'-----------------------------')
             print(f"Processing numeric column: {column}")
             # Skip columns with only values [0, 1]
             unique_values = self.df[column].unique()
@@ -220,8 +215,8 @@ class FeatureAnalyzer:
             else:
                 print(f"No outliers detected in column {column}.\n")
 
-            print(f'-----------------------------')
-            return outliers_columns
+        print(f'-----------------------------')
+        return outliers_columns
 
     def correlation_analysis(self, dataset=None) -> None:
         if dataset is None:
