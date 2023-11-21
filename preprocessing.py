@@ -18,10 +18,6 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
-import numpy as np
-from scipy import stats
-from scipy.stats import ttest_ind, f_oneway
-
 
 def parse_args() -> argparse.Namespace:
     args = argparse.ArgumentParser()
@@ -179,11 +175,11 @@ class FeatureAnalyzer:
         print(f'-----------------------------')
         print(f"Min, max and mean according to the dependent variable:\n{self.df.groupby('churn').agg({'tenure': ['min', 'mean', 'max'], 'monthlycharges': ['min', 'mean', 'max'], 'totalcharges': ['min', 'mean', 'max']})}")
 
+    # TODO tenure and totalcharges seem to have outliers
     def identify_outliers(self) -> [str]:
         outliers_columns = []
 
         print(f'----- OUTLIER IDENTIFICATION:')
-
         for column in self.df.select_dtypes(exclude='object').columns:
             print(f"Processing numeric column: {column}")
             # Skip columns with only values [0, 1]
@@ -237,6 +233,13 @@ class FeatureAnalyzer:
         sn.boxplot(y='totalcharges', x='churn', hue='churn', data=self.df, ax=axarr[1][1])
         plt.show()
 
+        fig, axarr = plt.subplots(2, 2, figsize=(20, 12))
+        sn.countplot(x='contract', hue='churn', data=self.df, ax=axarr[0][0])
+        sn.countplot(x='gender', hue='churn', data=self.df, ax=axarr[0][1])
+        sn.countplot(x='paymentmethod', hue='churn', data=self.df, ax=axarr[1][0])
+        sn.countplot(x='internetservice', hue='churn', data=self.df, ax=axarr[1][1])
+        plt.show()
+
     def tree_feature_importance_analysis(self, dataset=None) -> [str]:
         if dataset is None:
             dataset = self.df
@@ -254,7 +257,7 @@ class FeatureAnalyzer:
         selected_features = [feature for feature, importance in zip(feature_names, feature_importances) if
                              importance < 0.025]
         print(f'-----------------------------')
-        print(f'------ FEATURE IMPORTANCE ASSESMENT:')
+        print(f'------ FEATURE IMPORTANCE ASSESSMENT:')
         for feature, importance in zip(feature_names, feature_importances):
             print(f"Feature {feature}: Importance {importance}")
 
