@@ -176,11 +176,20 @@ class FeatureAnalyzer:
         print(f"Min, max and mean according to the dependent variable:\n{self.df.groupby('churn').agg({'tenure': ['min', 'mean', 'max'], 'monthlycharges': ['min', 'mean', 'max'], 'totalcharges': ['min', 'mean', 'max']})}")
 
     # TODO tenure and totalcharges seem to have outliers
+    # TODO find out why totalcharges and monthly charges are ignored
     def identify_outliers(self) -> [str]:
         outliers_columns = []
+        num_vars = []
+
+        self.df['totalcharges'] = pd.to_numeric(self.df['totalcharges'], errors='coerce')
+        self.df['monthlycharges'] = pd.to_numeric(self.df['monthlycharges'], errors='coerce')
+        for column in self.df.columns:
+            if self.df[column].dtype != 'object':
+                num_vars.append(column)
 
         print(f'----- OUTLIER IDENTIFICATION:')
-        for column in self.df.select_dtypes(exclude='object').columns:
+        for column in num_vars:
+            print(f'!!!!>>>>>>> NUM COL: {column}\n')
             print(f"Processing numeric column: {column}")
             # Skip columns with only values [0, 1]
             unique_values = self.df[column].unique()
