@@ -12,6 +12,7 @@
 import argparse
 import pandas as pd
 import seaborn as sn
+import numpy as np
 import matplotlib.pyplot as plt
 from typing import Optional
 from sklearn.preprocessing import LabelEncoder
@@ -56,6 +57,7 @@ class DatasetPreparator:
             if any(missing_values > 0)
             else dataset
         )
+        self.df = dataset
 
         return dataset
 
@@ -277,6 +279,8 @@ if __name__ == '__main__':
     analyzer.get_dataset_characteristics()
     outliers_cols = analyzer.identify_outliers()
     analyzer.visualize_data()
+    # TODO
+    # preparator.remove_missing_values(outliers_cols)
 
     # ----- Prepare dummy dataset for attribute importance analysis
     label_encoded_dataset = preparator.label_encode_categorical()
