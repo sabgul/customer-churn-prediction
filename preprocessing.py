@@ -40,8 +40,13 @@ class DatasetPreparator:
         self.df = pd.read_csv(self.csv_path)
 
     def remove_missing_values(self, dataset=None) -> Optional[pd.DataFrame]:
+        dataset_provided = True
         if dataset is None:
-            dataset = self.df
+            dataset_provided = False
+            dataset = self.df.copy()
+
+        dataset['TotalCharges'] = pd.to_numeric(dataset['TotalCharges'], errors='coerce')
+        dataset['MonthlyCharges'] = pd.to_numeric(dataset['MonthlyCharges'], errors='coerce')
 
         # Check for missing values
         missing_values = dataset.isnull().sum()
@@ -49,15 +54,15 @@ class DatasetPreparator:
         # Display columns with missing values
         print(f'Columns with missing values: {missing_values[missing_values > 0]}\n')
 
-        # Replace missing values if detected. In case of numerical values,
-        # use the mean value, in case of categorical, use the most frequent value.
         dataset = (
             dataset.apply(
                 lambda x: x.fillna(x.mean()) if pd.api.types.is_numeric_dtype(x) else x.fillna(x.mode().iloc[0]))
             if any(missing_values > 0)
             else dataset
         )
-        self.df = dataset
+
+        if not dataset_provided:
+            self.df = dataset.copy()
 
         return dataset
 
@@ -80,20 +85,23 @@ class DatasetPreparator:
         self.df = pd.get_dummies(self.df, columns=more_than_two_unique_values, drop_first=True)
         self.df = self.df.replace({True: 1, False: 0, 'Yes': 1, 'No': 0, 'Male': 0, 'Female': 1})
 
+        print(f'-----------------------------')
+        print(f'Final attributes: \n{[column for column in self.df.columns]}')
+        print(f'-----------------------------')
         return self.df
 
     # Use label encoding to transform categorical into numeric.
     # Used for identifying importance of variables with RandomForest.
     def label_encode_categorical(self) -> Optional[pd.DataFrame]:
-        data = self.df
+        data = self.df.copy()
 
-        data['TotalCharges'] = pd.to_numeric(self.df['TotalCharges'], errors='coerce')
-        data['MonthlyCharges'] = pd.to_numeric(self.df['MonthlyCharges'], errors='coerce')
+        data['TotalCharges'] = pd.to_numeric(data['TotalCharges'], errors='coerce')
+        data['MonthlyCharges'] = pd.to_numeric(data['MonthlyCharges'], errors='coerce')
 
         if 'customerID' in data.columns:
             data = data.drop('customerID', axis=1)
         categorical_cols = data.select_dtypes(include=['object']).columns
-        more_than_two_unique_values = [col for col in categorical_cols if len(self.df[col].unique()) > 2]
+        more_than_two_unique_values = [col for col in categorical_cols if len(data[col].unique()) > 2]
 
         le = LabelEncoder()
         for column in more_than_two_unique_values:
@@ -102,7 +110,19 @@ class DatasetPreparator:
 
         return data
 
+    def discretize_variables(self) -> Optional[pd.DataFrame]:
+        # TODO check for continuous variables,
+        # TODO choose approach for calculating number of bins
+        # TODO discretize into bins
+        pass
+
     def drop_attributes(self, attributes) -> Optional[pd.DataFrame]:
+        print(f'-----------------------------')
+        print(f'Dropping attributes due to their low importance: \n{attributes}')
+        print(f'-----------------------------')
+        print(f'Remaining attributes: \n{[column for column in self.df.columns if column not in attributes]}')
+        print(f'-----------------------------')
+
         self.df.drop(columns=attributes, inplace=True)
         if 'customerID' in self.df.columns:
             self.df = self.df.drop('customerID', axis=1)
@@ -222,7 +242,7 @@ class FeatureAnalyzer:
 
     def correlation_analysis(self, dataset=None) -> None:
         if dataset is None:
-            dataset = self.df
+            dataset = self.df.copy()
         correlation_matrix = dataset.corr()
 
         plt.figure(figsize=(12, 10))
@@ -248,7 +268,7 @@ class FeatureAnalyzer:
 
     def tree_feature_importance_analysis(self, dataset=None) -> [str]:
         if dataset is None:
-            dataset = self.df
+            dataset = self.df.copy()
         x = dataset.drop('Churn', axis=1)
         y = dataset['Churn']
 
@@ -291,6 +311,7 @@ if __name__ == '__main__':
     # ----- Prepare actual dataset
     preparator.drop_attributes(attrs_to_prune)
     preparator.remove_missing_values()
-    preparator.one_hot_encoding_categorical()
+    final_data = preparator.one_hot_encoding_categorical()
+
     # Next line is commented so that we prevent generation of new datasets
     # train_data, test_data = preparator.split_dataset()

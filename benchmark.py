@@ -20,6 +20,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
 
 
 def parse_args() -> argparse.Namespace:
@@ -30,6 +32,7 @@ def parse_args() -> argparse.Namespace:
                       help='Path to csv file of test dataset.')
 
     return args.parse_args()
+
 
 class BenchmarkTrainer:
     def __init__(self, csv_train_path: str, csv_test_path: str) -> None:
@@ -63,6 +66,19 @@ class BenchmarkTrainer:
         print(f'Intercept: {intercept}')
         print(f'-----------------------------')
 
+        # ---------------------
+        fpr, tpr, thresholds = roc_curve(y_test, logistic_model.predict_proba(x_test)[:, 1])
+        roc_auc = auc(fpr, tpr)
+
+        plt.figure(figsize=(8, 8))
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic (ROC) Curve')
+        plt.legend(loc='lower right')
+        plt.show()
+
         return y_test, y_pred
 
 
@@ -86,6 +102,10 @@ class BenchmarkEvaluator:
         class_report = classification_report(self.y_test, self.y_pred)
         print(f'Classification Report:\n{class_report}')
         print(f'-----------------------------')
+
+    # def visualize_results(self) -> None:
+    #     fpr, tpr, thresholds = roc_curve(y_test, logistic_model.predict_proba(X_test)[:, 1])
+    #     roc_auc = auc(fpr, tpr)
 
 
 if __name__ == '__main__':
