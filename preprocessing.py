@@ -300,7 +300,7 @@ if __name__ == '__main__':
     outliers_cols = analyzer.identify_outliers()
     analyzer.visualize_data()
     # TODO
-    # preparator.remove_missing_values(outliers_cols)
+    # preparator.handle_outliers(outliers_cols)
 
     # ----- Prepare dummy dataset for attribute importance analysis
     label_encoded_dataset = preparator.label_encode_categorical()
