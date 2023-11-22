@@ -217,6 +217,7 @@ class FeatureAnalyzer:
                 continue
 
             sn.boxplot(x=self.df[column])
+            plt.savefig(f'graphs/box-{column}.png')
             plt.show()
 
             sn.scatterplot(x=self.df['tenure'], y=self.df['monthlycharges'])
@@ -248,6 +249,7 @@ class FeatureAnalyzer:
         plt.figure(figsize=(12, 10))
         sn.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5, annot_kws={"size": 7},)
         plt.title("Correlation Matrix")
+        plt.savefig(f'graphs/correlation-matrix.png')
         plt.show()
         pass
 
@@ -257,6 +259,7 @@ class FeatureAnalyzer:
         sn.boxplot(y='tenure', x='churn', hue='churn', data=self.df, ax=axarr[0][1])
         sn.boxplot(y='monthlycharges', x='churn', hue='churn', data=self.df, ax=axarr[1][0])
         sn.boxplot(y='totalcharges', x='churn', hue='churn', data=self.df, ax=axarr[1][1])
+        plt.savefig(f'graphs/bar-comp-1.png')
         plt.show()
 
         fig, axarr = plt.subplots(2, 2, figsize=(20, 12))
@@ -264,6 +267,7 @@ class FeatureAnalyzer:
         sn.countplot(x='gender', hue='churn', data=self.df, ax=axarr[0][1])
         sn.countplot(x='paymentmethod', hue='churn', data=self.df, ax=axarr[1][0])
         sn.countplot(x='internetservice', hue='churn', data=self.df, ax=axarr[1][1])
+        plt.savefig(f'graphs/bar-comp-2.png')
         plt.show()
 
     def tree_feature_importance_analysis(self, dataset=None) -> [str]:

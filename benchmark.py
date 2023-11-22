@@ -77,6 +77,7 @@ class BenchmarkTrainer:
         plt.ylabel('True Positive Rate')
         plt.title('Receiver Operating Characteristic (ROC) Curve')
         plt.legend(loc='lower right')
+        plt.savefig('graphs/benchmark-roc.png')
         plt.show()
 
         return y_test, y_pred
