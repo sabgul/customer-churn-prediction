@@ -74,7 +74,6 @@ class DatasetPreparator:
     # Use one hot encoding to avoid imposing ordinal relationships.
     # This is necessary for latter use of Bayesian networks.
     def one_hot_encoding_categorical(self) -> Optional[pd.DataFrame]:
-        # print(f'COLUMNS WHICH ARE PRESENT: {self.df.columns}\n')
         self.df['TotalCharges'] = pd.to_numeric(self.df['TotalCharges'], errors='coerce')
         self.df['MonthlyCharges'] = pd.to_numeric(self.df['MonthlyCharges'], errors='coerce')
 
@@ -111,9 +110,24 @@ class DatasetPreparator:
         return data
 
     def discretize_variables(self) -> Optional[pd.DataFrame]:
-        # TODO check for continuous variables,
-        # TODO choose approach for calculating number of bins
-        # TODO discretize into bins
+        print(f'-----------------------------')
+        print(f'--DISCRETIZATION OF CONTINUOUS VARIABLES----')
+        print(f'-----------------------------')
+        for column in ['tenure', 'MonthlyCharges', 'TotalCharges']:
+            num_bins = 5
+            self.df[column], bin_edges = \
+                pd.qcut(self.df[column], q=num_bins, labels=False, retbins=True)
+
+            # Print out the range for each bin
+            print(f'-----------------------------')
+            print(f'-----------------------------')
+            print(f'Binned values for the column {column}:')
+            for i in range(num_bins):
+                print(f'Bin {i}: {bin_edges[i]:.2f} to {bin_edges[i + 1]:.2f}')
+
+            print(f'-----------------------------')
+            print(f'Number of vals for each bin: \n {self.df[column].value_counts()}')
+            print(f'-----------------------------')
         pass
 
     def drop_attributes(self, attributes) -> Optional[pd.DataFrame]:
@@ -170,6 +184,15 @@ class FeatureAnalyzer:
 
         print(f'-----------------------------')
         print(f'Columns: {self.df.columns} and their types: {self.df.columns.dtype}\n')
+
+        # Get range of continuous variables
+        print(f'-----------------------------')
+        print(f"Min, max and mean according to the dependent variable:"
+              f"\n{self.df.groupby('churn').agg({'tenure': ['min', 'mean', 'max']})}")
+        print(f'-----------------------------')
+        print(f"Min, max and mean according to the dependent variable:"
+              f"\n{self.df.groupby('churn').agg({'monthlycharges': ['min', 'mean', 'max']})}")
+        print(f'-----------------------------')
 
         # Get information about categorical and numerical attributes
         categorical_vars = []
@@ -303,7 +326,6 @@ if __name__ == '__main__':
     analyzer.get_dataset_characteristics()
     outliers_cols = analyzer.identify_outliers()
     analyzer.visualize_data()
-    # TODO
     # preparator.handle_outliers(outliers_cols)
 
     # ----- Prepare dummy dataset for attribute importance analysis
@@ -315,7 +337,8 @@ if __name__ == '__main__':
     # ----- Prepare actual dataset
     preparator.drop_attributes(attrs_to_prune)
     preparator.remove_missing_values()
+    preparator.discretize_variables()
     final_data = preparator.one_hot_encoding_categorical()
 
     # Next line is commented so that we prevent generation of new datasets
-    # train_data, test_data = preparator.split_dataset()
+    train_data, test_data = preparator.split_dataset()

@@ -18,7 +18,7 @@ import pickle
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
-from pgmpy.estimators import HillClimbSearch, BayesianEstimator, ParameterEstimator
+from pgmpy.estimators import HillClimbSearch, BayesianEstimator, ParameterEstimator, BicScore
 from pgmpy.models import BayesianNetwork, BayesianModel
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
@@ -74,15 +74,42 @@ class BayesianTrainer:
 
     def structure_train(self) -> None:
         # Perform Hill Climbing Search for Bayesian Network structure learning
+        bic = BicScore(self.train_df)
+
+        # Perform Hill Climbing Search for Bayesian Network structure learning
         hc = HillClimbSearch(self.train_df)
-        structure = hc.estimate()
 
-        self.best_model = BayesianNetwork(structure.edges())
-        with open(self.net_structure_path, 'wb') as file:
-            pickle.dump(self.best_model, file)
+        # Track the BIC scores to monitor convergence
+        bic_scores = []
 
-        # Print the edges of the learned structure
-        print(self.best_model.edges())
+        # Set your custom stopping criterion
+        max_iterations = 10000
+        epsilon = 1e-4
+
+        for i in range(max_iterations):
+            # Perform a single step of the search
+            next_model = hc.estimate()
+
+            # Get the BIC score of the new model
+            bic_score = bic.score(next_model)
+            bic_scores.append(bic_score)
+
+            # Check for convergence based on the improvement in BIC score
+            if i > 0 and abs(bic_scores[-1] - bic_scores[-2]) < epsilon:
+                break
+
+        # Print the learned structure
+        print(next_model.edges())
+
+        # hc = HillClimbSearch(self.train_df, max_iter=10000)
+        # structure = hc.estimate()
+        #
+        # self.best_model = BayesianNetwork(structure.edges())
+        # with open(self.net_structure_path, 'wb') as file:
+        #     pickle.dump(self.best_model, file)
+        #
+        # # Print the edges of the learned structure
+        # print(self.best_model.edges())
 
     def plot_structure(self) -> None:
         # Create a directed graph from the edges of the learned structure
