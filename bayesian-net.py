@@ -8,6 +8,7 @@
     the performance of Bayesian network on customer churn data.
 """
 import numpy as np
+from pgmpy.inference import VariableElimination
 
 'External packages'
 import argparse
@@ -17,8 +18,8 @@ import pickle
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
-from pgmpy.estimators import HillClimbSearch, BayesianEstimator
-from pgmpy.models import BayesianNetwork
+from pgmpy.estimators import HillClimbSearch, BayesianEstimator, ParameterEstimator
+from pgmpy.models import BayesianNetwork, BayesianModel
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
     precision_recall_curve,
@@ -130,6 +131,9 @@ class BayesianTrainer:
                 # Estimate CPDs for the current batch
                 model.fit(batch_df, estimator=BayesianEstimator, prior_type='BDeu', equivalent_sample_size=10)
 
+                # model.fit(df_train, estimator=MaximumLikelihoodEstimator)
+                # infer = VariableElimination(model)
+
                 # Update the progress bar
                 pbar.update(1)
 
@@ -139,16 +143,53 @@ class BayesianTrainer:
         return model
 
     def make_predictions(self, model):
-        test_data_for_prediction = self.test_df.copy()
-        # test_data_for_prediction.loc[:, 'Churn'] = None  # Assuming 'Churn' is the target variable
-        # test_data_for_prediction['Churn'] = np.nan
-        # test_data_for_prediction['Churn'] = np.nan  # or any placeholder value
-        self.test_df.drop('Churn', axis=1, inplace=True)
+        print("Edges of the Bayesian model:", model.edges())
 
-        # self.test_df['Churn'] = np.nan
-        # Predict missing variables
-        preds = model.predict(self.test_df)
-        return preds
+        # Print CPDs (conditional probability distributions) if available
+        for cpd in model.get_cpds():
+            print(cpd)
+
+        for variable in model.nodes():
+            cpd = model.get_cpds(variable)
+            states = cpd.state_names[variable]
+            print(f"Variable: {variable}, States: {states}")
+        # test_data_for_prediction = self.test_df.copy()
+        # # test_data_for_prediction.loc[:, 'Churn'] = None  # Assuming 'Churn' is the target variable
+        # # test_data_for_prediction['Churn'] = np.nan
+        # # test_data_for_prediction['Churn'] = np.nan  # or any placeholder value
+        # # self.test_df.drop('Churn', axis=1, inplace=True)
+        # # x_test = self.test_df.drop('Churn', axis=1, inplace=True)
+        #
+        # # self.test_df['Churn'] = np.nan
+        # # Predict missing variables
+        # # preds = model.predict(self.test_df)
+        #
+        # inference = VariableElimination(model)
+        # # preds = inference.query(variables=[self.target_variable], evidence=x_test)
+        # # preds = [model.predict(evidence=evidence_point) for evidence_point in x_test.to_dict(orient='records')]
+        # if self.test_df is not None:
+        #     if 'Churn' in self.test_df.columns:
+        #         inference = VariableElimination(model)
+        #
+        #         # Drop 'Churn' column from x_test
+        #         x_test_without_churn = self.test_df.drop('Churn', axis=1)
+        #
+        #         # Convert x_test_without_churn to a list of dictionaries
+        #         evidence_list = x_test_without_churn.to_dict(orient='records')
+        #
+        #         # Make predictions for the 'Churn' variable for each row
+        #         y_pred_churn_list = [inference.query(variables=['Churn'], evidence=evidence)['Churn'] for evidence in
+        #                              evidence_list]
+        #
+        #         # Concatenate the predictions into a single DataFrame
+        #         y_pred_churn_df = pd.concat(y_pred_churn_list, axis=1).transpose()
+        #         return y_pred_churn_df
+        #     else:
+        #         print("Error: 'Churn' column not found in test dataset.")
+        #         return None
+        # else:
+        #     print("Error: Test dataset is None.")
+        #     return None
 
 
 class BayesianEvaluator:
@@ -232,15 +273,17 @@ if __name__ == '__main__':
     train = BayesianTrainer(args.csv_path_train, args.csv_path_test, args.net_structure_path,
                             args.net_structure_and_params_path, args.batch_size)
 
-    # train.structure_train()
+    train.structure_train()
     train.check_for_cycles()
     train.plot_structure()
 
     # model = train.train_parameters()
-    model = train.load_parameters()
-    predictions = train.make_predictions(model)
-    print(predictions)
+    # model = train.load_parameters()
+    # predictions = train.make_predictions(model)
+    # train.make_predictions(model)
 
-    evaluator = BayesianEvaluator(args.csv_path_train, args.csv_path_test, predictions, model)
-    evaluator.evaluate_predictions()
-    evaluator.visualize_evaluation()
+    # print(predictions)
+
+    # evaluator = BayesianEvaluator(args.csv_path_train, args.csv_path_test, predictions, model)
+    # evaluator.evaluate_predictions()
+    # evaluator.visualize_evaluation()
