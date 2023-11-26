@@ -7,6 +7,7 @@
     This file contains scripts for training and evaluating
     the performance of Bayesian network on customer churn data.
 """
+import numpy as np
 
 'External packages'
 import argparse
@@ -43,7 +44,7 @@ def parse_args() -> argparse.Namespace:
                       help='Path to file with trained structure of Bayesian net.')
     args.add_argument('--net-structure-and-params-path', type=str, default='models/net_structure_params.pkl',
                       help='Path to file with trained structure and parameters of Bayesian net.')
-    args.add_argument('--batch-size', type=int, default=10,
+    args.add_argument('--batch-size', type=int, default=1000,
                       help='Size of each batch for processing data.')
 
     return args.parse_args()
@@ -111,6 +112,10 @@ class BayesianTrainer:
         else:
             print("The learned structure contains cycles.")
 
+    def load_parameters(self):
+        with open(self.net_structure_and_params_path, 'rb') as file:
+            return pickle.load(file)
+
     def train_parameters(self):
         model = self.best_model
 
@@ -128,11 +133,22 @@ class BayesianTrainer:
                 # Update the progress bar
                 pbar.update(1)
 
-        preds = model.predict(self.test_df)
         with open(self.net_structure_and_params_path, 'wb') as file:
             pickle.dump(model, file)
 
-        return model, preds
+        return model
+
+    def make_predictions(self, model):
+        test_data_for_prediction = self.test_df.copy()
+        # test_data_for_prediction.loc[:, 'Churn'] = None  # Assuming 'Churn' is the target variable
+        # test_data_for_prediction['Churn'] = np.nan
+        # test_data_for_prediction['Churn'] = np.nan  # or any placeholder value
+        self.test_df.drop('Churn', axis=1, inplace=True)
+
+        # self.test_df['Churn'] = np.nan
+        # Predict missing variables
+        preds = model.predict(self.test_df)
+        return preds
 
 
 class BayesianEvaluator:
@@ -220,7 +236,9 @@ if __name__ == '__main__':
     train.check_for_cycles()
     train.plot_structure()
 
-    model, predictions = train.train_parameters()
+    # model = train.train_parameters()
+    model = train.load_parameters()
+    predictions = train.make_predictions(model)
     print(predictions)
 
     evaluator = BayesianEvaluator(args.csv_path_train, args.csv_path_test, predictions, model)
