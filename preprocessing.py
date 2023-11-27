@@ -81,7 +81,7 @@ class DatasetPreparator:
         more_than_two_unique_values = [col for col in categorical_cols if len(self.df[col].unique()) > 2]
 
         # Apply one-hot encoding only for selected categorical columns
-        self.df = pd.get_dummies(self.df, columns=more_than_two_unique_values, drop_first=True)
+        self.df = pd.get_dummies(self.df, columns=more_than_two_unique_values)
         self.df = self.df.replace({True: 1, False: 0, 'Yes': 1, 'No': 0, 'Male': 0, 'Female': 1})
 
         print(f'-----------------------------')
@@ -308,7 +308,7 @@ class FeatureAnalyzer:
         feature_names = x.columns
 
         selected_features = [feature for feature, importance in zip(feature_names, feature_importances) if
-                             importance < 0.025]
+                             importance < 0.035]
         print(f'-----------------------------')
         print(f'------ FEATURE IMPORTANCE ASSESSMENT:')
         for feature, importance in zip(feature_names, feature_importances):
@@ -341,4 +341,4 @@ if __name__ == '__main__':
     final_data = preparator.one_hot_encoding_categorical()
 
     # Next line is commented so that we prevent generation of new datasets
-    train_data, test_data = preparator.split_dataset()
+    # train_data, test_data = preparator.split_dataset()
