@@ -18,7 +18,8 @@ import pickle
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
-from pgmpy.estimators import HillClimbSearch, BayesianEstimator, ParameterEstimator, BicScore
+from pgmpy.estimators import HillClimbSearch, BayesianEstimator, ParameterEstimator, BicScore, PC, K2Score, \
+    MmhcEstimator, TreeSearch
 from pgmpy.models import BayesianNetwork, BayesianModel
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
@@ -45,7 +46,7 @@ def parse_args() -> argparse.Namespace:
                       help='Path to file with trained structure of Bayesian net.')
     args.add_argument('--net-structure-and-params-path', type=str, default='models/net_structure_params.pkl',
                       help='Path to file with trained structure and parameters of Bayesian net.')
-    args.add_argument('--batch-size', type=int, default=1000,
+    args.add_argument('--batch-size', type=int, default=10,
                       help='Size of each batch for processing data.')
 
     return args.parse_args()
@@ -72,44 +73,76 @@ class BayesianTrainer:
         else:
             self.structure_train()
 
+    # TODO remove
+    def get_dummy_struc(self):
+        with open(self.net_structure_path, 'rb') as file:
+            return pickle.load(file)
+
     def structure_train(self) -> None:
-        # Perform Hill Climbing Search for Bayesian Network structure learning
-        bic = BicScore(self.train_df)
-
-        # Perform Hill Climbing Search for Bayesian Network structure learning
-        hc = HillClimbSearch(self.train_df)
-
-        # Track the BIC scores to monitor convergence
-        bic_scores = []
-
-        # Set your custom stopping criterion
-        max_iterations = 10000
-        epsilon = 1e-4
-
-        for i in range(max_iterations):
-            # Perform a single step of the search
-            next_model = hc.estimate()
-
-            # Get the BIC score of the new model
-            bic_score = bic.score(next_model)
-            bic_scores.append(bic_score)
-
-            # Check for convergence based on the improvement in BIC score
-            if i > 0 and abs(bic_scores[-1] - bic_scores[-2]) < epsilon:
-                break
-
-        # Print the learned structure
-        print(next_model.edges())
-
-        # hc = HillClimbSearch(self.train_df, max_iter=10000)
+        # approach 1 HillClimbSearch
+        # hc = HillClimbSearch(self.train_df)
         # structure = hc.estimate()
+
+        # approach 2 HillClimbSearch with k2
+        # hc = HillClimbSearch(self.train_df)
+        # structure = hc.estimate(scoring_method=K2Score(self.train_df), tabu_length=150)
+
+        # approach 4 MMHC this doesnt show any training progress
+        # mmhc_estimator = MmhcEstimator(self.train_df)
+        # learned_structure = mmhc_estimator.estimate()
+
+        # approach 5: this works worse than hc
+        # tree_estimator = TreeSearch(self.train_df)
+        # learned_structure = tree_estimator.estimate(estimator_type='chow-liu')
+
+        # tree_estimator = TreeSearch(self.train_df)
+        # learned_structure = tree_estimator.estimate()
+
         #
+        # tree_estimator = TreeSearch(self.train_df)
+        # learned_structure = tree_estimator.estimate(estimator_type='tan', class_node='Churn')
+
+        #
+        # pc_estimator = PC(self.train_df)
+        # learned_structure = pc_estimator.estimate(ci_test='chi_square')
+
+        # pc_estimator = PC(self.train_df)
+        # learned_structure = pc_estimator.estimate(ci_test='g_sq')
+
+        # NEXT
+        state_names = {
+            'TechSupport_No internet service': [0, 1],  # replace with actual state names for nodeA
+            'MonthlyCharges': [0, 1, 2, 3, 4],  # replace with actual state names for nodeB
+            'TotalCharges': [0, 1, 2, 3, 4],  # replace with actual state names for nodeB
+            'OnlineSecurity_No internet service': [0, 1],  # replace with actual state names for nodeB
+            'tenure': [0, 1, 2, 3, 4],  # replace with actual state names for nodeB
+            'Churn': [0, 1],  # replace with actual state names for nodeB
+            'Contract_Month-to-month': [0, 1],  # replace with actual state names for nodeB
+            'Contract_Two year': [0, 1],  # replace with actual state names for nodeB
+            'PaymentMethod_Credit card (automatic)': [0, 1],  # replace with actual state names for nodeB
+            'PaymentMethod_Mailed check': [0, 1],  # replace with actual state names for nodeB
+            'PaymentMethod_Electronic check': [0, 1],  # replace with actual state names for nodeB
+            'PaymentMethod_Bank transfer (automatic)': [0, 1],  # replace with actual state names for nodeB
+            'TechSupport_No': [0, 1],  # replace with actual state names for nodeB
+            'Contract_One year': [0, 1],  # replace with actual state names for nodeB
+            'TechSupport_Yes': [0, 1]  # replace with actual state names for nodeB
+            # Add other nodes as needed
+        }
+        mmhc_estimator = MmhcEstimator(self.train_df, state_names=state_names)
+        learned_structure = mmhc_estimator.estimate()
+        # NEXT
+
+
+        # Create a BayesianModel with the learned structure
+        self.best_model = BayesianModel(learned_structure.edges())
+
         # self.best_model = BayesianNetwork(structure.edges())
-        # with open(self.net_structure_path, 'wb') as file:
-        #     pickle.dump(self.best_model, file)
-        #
-        # # Print the edges of the learned structure
-        # print(self.best_model.edges())
+
+        with open(self.net_structure_path, 'wb') as file:
+            pickle.dump(self.best_model, file)
+
+        # Print the edges of the learned structure
+        print(self.best_model.edges())
 
     def plot_structure(self) -> None:
         # Create a directed graph from the edges of the learned structure
@@ -304,10 +337,15 @@ if __name__ == '__main__':
     train.check_for_cycles()
     train.plot_structure()
 
-    # model = train.train_parameters()
+    # Remove after debug
+    # mod = train.get_dummy_struc()
+    # train.make_predictions(mod)
+    # --
+
+    model = train.train_parameters()
     # model = train.load_parameters()
     # predictions = train.make_predictions(model)
-    # train.make_predictions(model)
+    train.make_predictions(model)
 
     # print(predictions)
 
