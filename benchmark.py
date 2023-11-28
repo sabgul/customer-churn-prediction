@@ -19,16 +19,17 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, precision_recall_curve, \
+    average_precision_score
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 
 
 def parse_args() -> argparse.Namespace:
     args = argparse.ArgumentParser()
-    args.add_argument('--csv-path-train', type=str, default='data/train_data.csv',
+    args.add_argument('--csv-path-train', type=str, default='data/train_data_labels.csv',
                       help='Path to csv file of train dataset.')
-    args.add_argument('--csv-path-test', type=str, default='data/test_data.csv',
+    args.add_argument('--csv-path-test', type=str, default='data/test_data_labels.csv',
                       help='Path to csv file of test dataset.')
 
     return args.parse_args()
@@ -73,12 +74,23 @@ class BenchmarkTrainer:
         plt.figure(figsize=(8, 8))
         plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
         plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random')
-        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
-        plt.title('Receiver Operating Characteristic (ROC) Curve')
+        plt.title('Receiver Operating Characteristic (ROC) Curve for Logistic regression')
         plt.legend(loc='lower right')
         plt.savefig('graphs/benchmark-roc.png')
+        plt.show()
+
+        precision, recall, _ = precision_recall_curve(y_test, logistic_model.predict_proba(x_test)[:, 1])
+        average_precision = average_precision_score(y_test, y_pred)
+        # Plot Precision-Recall Curve
+        plt.step(recall, precision, color='b', alpha=0.2, where='post')
+        plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.ylim([0.0, 1.05])
+        plt.xlim([0.0, 1.0])
+        plt.title('Precision-Recall Curve (AP = {0:.2f}), benchmark'.format(average_precision))
         plt.show()
 
         return y_test, y_pred
@@ -92,7 +104,7 @@ class BenchmarkEvaluator:
     def evaluate_regression(self) -> None:
         # Evaluate accuracy
         accuracy = accuracy_score(self.y_test, self.y_pred)
-        print(f'Accuracy: {accuracy:.2f}')
+        print(f'Accuracy: {accuracy}')
         print(f'-----------------------------')
 
         # Confusion matrix
@@ -104,10 +116,6 @@ class BenchmarkEvaluator:
         class_report = classification_report(self.y_test, self.y_pred)
         print(f'Classification Report:\n{class_report}')
         print(f'-----------------------------')
-
-    # def visualize_results(self) -> None:
-    #     fpr, tpr, thresholds = roc_curve(y_test, logistic_model.predict_proba(X_test)[:, 1])
-    #     roc_auc = auc(fpr, tpr)
 
 
 if __name__ == '__main__':

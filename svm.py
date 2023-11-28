@@ -32,9 +32,9 @@ from sklearn.metrics import (
 
 def parse_args() -> argparse.Namespace:
     args = argparse.ArgumentParser()
-    args.add_argument('--csv-path-train', type=str, default='data/train_data.csv',
+    args.add_argument('--csv-path-train', type=str, default='data/train_data_labels.csv',
                       help='Path to csv file of train dataset.')
-    args.add_argument('--csv-path-test', type=str, default='data/test_data.csv',
+    args.add_argument('--csv-path-test', type=str, default='data/test_data_labels.csv',
                       help='Path to csv file of test dataset.')
     args.add_argument('--net-structure-path', type=str, default='models/net_structure.pkl',
                       help='Path to file with trained structure of Bayesian net.')
@@ -125,23 +125,23 @@ class SVMEvaluator:
         plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random')
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
-        plt.title('Receiver Operating Characteristic (ROC) Curve, linear')
+        plt.title('Receiver Operating Characteristic (ROC) Curve, linear kernel ')
         plt.legend(loc='lower right')
         plt.show()
 
-        precision, recall, _ = precision_recall_curve(y_test, y_pred)
+        # Precision recall
+        precision, recall, _ = precision_recall_curve(y_test, svm_model.decision_function(x_test))
         average_precision = average_precision_score(y_test, y_pred)
 
-        # Plot Precision-Recall curve
         plt.figure(figsize=(8, 6))
-        plt.plot(recall, precision, color='blue', lw=2,
-                 label='Precision-Recall curve (AP = {:.2f})'.format(average_precision))
+        plt.step(recall, precision, color='b', alpha=0.2, where='post')
+        plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
         plt.xlabel('Recall')
         plt.ylabel('Precision')
-        plt.title('Precision-Recall Curve')
-        plt.legend(loc='upper right')
+        plt.ylim([0.0, 1.05])
+        plt.xlim([0.0, 1.0])
+        plt.title('Precision-Recall Curve (AP = {:.2f}), SVM'.format(average_precision))
         plt.show()
-
 
 
 if __name__ == '__main__':
