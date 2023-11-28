@@ -12,8 +12,8 @@
 import argparse
 import pandas as pd
 import seaborn as sn
-import numpy as np
 import matplotlib.pyplot as plt
+
 from typing import Optional
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
@@ -109,14 +109,20 @@ class DatasetPreparator:
 
         return data
 
-    def discretize_variables(self) -> Optional[pd.DataFrame]:
+    def discretize_variables(self, dataset=None) -> Optional[pd.DataFrame]:
+        dataset_provided = True
+        if dataset is None:
+            dataset_provided = False
+            dataset = self.df.copy()
+
         print(f'-----------------------------')
         print(f'--DISCRETIZATION OF CONTINUOUS VARIABLES----')
         print(f'-----------------------------')
+
         for column in ['tenure', 'MonthlyCharges', 'TotalCharges']:
             num_bins = 5
-            self.df[column], bin_edges = \
-                pd.qcut(self.df[column], q=num_bins, labels=False, retbins=True)
+            dataset[column], bin_edges = \
+                pd.qcut(dataset[column], q=num_bins, labels=False, retbins=True)
 
             # Print out the range for each bin
             print(f'-----------------------------')
@@ -126,28 +132,43 @@ class DatasetPreparator:
                 print(f'Bin {i}: {bin_edges[i]:.2f} to {bin_edges[i + 1]:.2f}')
 
             print(f'-----------------------------')
-            print(f'Number of vals for each bin: \n {self.df[column].value_counts()}')
+            print(f'Number of vals for each bin: \n {dataset[column].value_counts()}')
             print(f'-----------------------------')
-        pass
+        if not dataset_provided:
+            self.df = dataset.copy()
 
-    def drop_attributes(self, attributes) -> Optional[pd.DataFrame]:
+        return dataset
+
+    def drop_attributes(self, attributes, dataset=None) -> Optional[pd.DataFrame]:
+        dataset_provided = True
+        if dataset is None:
+            dataset_provided = False
+            dataset = self.df.copy()
+
         print(f'-----------------------------')
         print(f'Dropping attributes due to their low importance: \n{attributes}')
         print(f'-----------------------------')
-        print(f'Remaining attributes: \n{[column for column in self.df.columns if column not in attributes]}')
+        print(f'Remaining attributes: \n{[column for column in dataset.columns if column not in attributes]}')
         print(f'-----------------------------')
 
-        self.df.drop(columns=attributes, inplace=True)
-        if 'customerID' in self.df.columns:
-            self.df = self.df.drop('customerID', axis=1)
-        return self.df
+        dataset.drop(columns=attributes, inplace=True)
+        if 'customerID' in dataset.columns:
+            dataset = dataset.drop('customerID', axis=1)
 
-    def split_dataset(self, test_size=0.2, random_state=None):
-        x = self.df.drop('Churn', axis=1)
-        y = self.df['Churn']
+        if not dataset_provided:
+            self.df = dataset.copy()
+
+        return dataset
+
+    def split_dataset(self, dataset=None):
+        if dataset is None:
+            dataset = self.df.copy()
+
+        x = dataset.drop('Churn', axis=1)
+        y = dataset['Churn']
 
         # Split the dataset
-        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=random_state)
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
 
         # Combine features and target variable for both train and test sets
         train = pd.concat([x_train, y_train], axis=1)
@@ -293,7 +314,7 @@ class FeatureAnalyzer:
         plt.savefig(f'graphs/bar-comp-2.png')
         plt.show()
 
-    def tree_feature_importance_analysis(self, dataset=None) -> [str]:
+    def tree_feature_importance_analysis(self, significance, dataset=None) -> [str]:
         if dataset is None:
             dataset = self.df.copy()
         x = dataset.drop('Churn', axis=1)
@@ -308,13 +329,15 @@ class FeatureAnalyzer:
         feature_names = x.columns
 
         selected_features = [feature for feature, importance in zip(feature_names, feature_importances) if
-                             importance < 0.035]
+                             importance < significance]
         print(f'-----------------------------')
         print(f'------ FEATURE IMPORTANCE ASSESSMENT:')
         for feature, importance in zip(feature_names, feature_importances):
             print(f"Feature {feature}: Importance {importance}")
 
         return selected_features
+
+    # def minimize_variables(self):
 
 
 if __name__ == '__main__':
@@ -332,13 +355,18 @@ if __name__ == '__main__':
     label_encoded_dataset = preparator.label_encode_categorical()
     label_encoded_dataset = preparator.remove_missing_values(label_encoded_dataset)
     analyzer.correlation_analysis(label_encoded_dataset)
-    attrs_to_prune = analyzer.tree_feature_importance_analysis(label_encoded_dataset)
+    attrs_to_prune = analyzer.tree_feature_importance_analysis(0.035, label_encoded_dataset)
+
+    # ---- Prepare parsimounious dataset with fewer variables
+    pruned_attrs = analyzer.tree_feature_importance_analysis(0.05, label_encoded_dataset)
+    label_encoded_dataset = preparator.drop_attributes(pruned_attrs, label_encoded_dataset)
+    label_encoded_dataset = preparator.discretize_variables(label_encoded_dataset)
+    # train_data, test_data = preparator.split_dataset(label_encoded_dataset)
 
     # ----- Prepare actual dataset
     preparator.drop_attributes(attrs_to_prune)
     preparator.remove_missing_values()
     preparator.discretize_variables()
     final_data = preparator.one_hot_encoding_categorical()
-
     # Next line is commented so that we prevent generation of new datasets
     # train_data, test_data = preparator.split_dataset()
