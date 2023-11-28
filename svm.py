@@ -14,16 +14,10 @@ from sklearn.svm import SVC
 
 'External packages'
 import argparse
-import os
-import pickle
 
 import matplotlib.pyplot as plt
-import networkx as nx
 import pandas as pd
 import seaborn as sn
-from pgmpy.estimators import HillClimbSearch, BayesianEstimator, ParameterEstimator, BicScore, PC, K2Score, \
-    MmhcEstimator, TreeSearch
-from pgmpy.models import BayesianNetwork, BayesianModel
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -34,7 +28,6 @@ from sklearn.metrics import (
     roc_curve,
     auc, classification_report, precision_recall_curve, average_precision_score,
 )
-from tqdm import tqdm
 
 
 def parse_args() -> argparse.Namespace:
@@ -64,22 +57,23 @@ class SVMTrainer:
 
     def train_model(self):
         # Assuming 'churn' is your target variable
-        x = self.train_df.drop(self.target_variable, axis=1)  # Features
-        y = self.train_df[self.target_variable]  # Target variable
+        x_train = self.train_df.drop(self.target_variable, axis=1)  # Features
+        y_train = self.train_df[self.target_variable]  # Target variable
 
-        # Split the dataset into training and testing sets
-        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+        x_test = self.test_df.drop(self.target_variable, axis=1)
+        y_test = self.test_df[self.target_variable]
 
         # Initialize SVM model
-        # rbf, linear, poly
-        svm_model = SVC(kernel='poly', C=1.0)
+        # rbf, linear, sigmoid, poly, C=1.0
+        # linear kernel performs best so far
+        svm_model = SVC(kernel='linear', C=7.0, probability=True)
 
         # Train the model
         svm_model.fit(x_train, y_train)
 
         # Make predictions
         y_pred = svm_model.predict(x_test)
-        return y_pred, y_test
+        return y_pred, y_test, svm_model
 
 
 class SVMEvaluator:
@@ -90,14 +84,39 @@ class SVMEvaluator:
         self.test_df = pd.read_csv(self.csv_test_path)
         self.target_variable = 'Churn'
 
-    def eval_model(self, y_pred, y_test):
+    def eval_model(self, y_pred, y_test, svm_model):
+        # Access coefficients and intercept
+        coefficients = svm_model.coef_
+        intercept = svm_model.intercept_
+
+        print(f'-----------------------------')
+        print(f'Coefficients:\n{coefficients}')
+        print(f'-----------------------------')
+        print(f'Intercept: {intercept}')
+        print(f'-----------------------------')
+
         accuracy = accuracy_score(y_test, y_pred)
-        report = classification_report(y_test, y_pred)
-
         print(f'Accuracy: {accuracy}')
-        print(f'Classification Report:\n{report}')
+        print(f'-----------------------------')
 
-        fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+        class_report = classification_report(y_test, y_pred)
+        print(f'Classification Report:\n{class_report}')
+        print(f'-----------------------------')
+
+        conf_matrix = confusion_matrix(y_test, y_pred)
+        print(f'Confusion Matrix:\n{conf_matrix}')
+        print(f'-----------------------------')
+
+        # Plot confusion matrix
+        plt.figure(figsize=(6, 4))
+        sn.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', cbar=False)
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.title('Confusion Matrix')
+        plt.show()
+
+        x_test = self.test_df.drop(self.target_variable, axis=1)
+        fpr, tpr, thresholds = roc_curve(y_test, svm_model.predict_proba(x_test)[:, 1])
         roc_auc = auc(fpr, tpr)
 
         # Plot ROC curve
@@ -106,7 +125,7 @@ class SVMEvaluator:
         plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random')
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
-        plt.title('Receiver Operating Characteristic (ROC) Curve')
+        plt.title('Receiver Operating Characteristic (ROC) Curve, linear')
         plt.legend(loc='lower right')
         plt.show()
 
@@ -123,23 +142,13 @@ class SVMEvaluator:
         plt.legend(loc='upper right')
         plt.show()
 
-        # Confusion matrix
-        cm = confusion_matrix(y_test, y_pred)
-
-        # Plot confusion matrix
-        plt.figure(figsize=(6, 4))
-        sn.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
-        plt.xlabel('Predicted')
-        plt.ylabel('True')
-        plt.title('Confusion Matrix')
-        plt.show()
 
 
 if __name__ == '__main__':
     args = parse_args()
 
     trainer = SVMTrainer(args.csv_path_train, args.csv_path_test, args.batch_size)
-    predictions, y_test = trainer.train_model()
+    predictions, y_test, svm_model = trainer.train_model()
 
     evaluator = SVMEvaluator(args.csv_path_train, args.csv_path_test)
-    evaluator.eval_model(predictions, y_test)
+    evaluator.eval_model(predictions, y_test, svm_model)
