@@ -175,8 +175,8 @@ class DatasetPreparator:
         test = pd.concat([x_test, y_test], axis=1)
 
         # commented to avoid generating new distribution
-        train.to_csv('data/train_data.csv', index=False)
-        test.to_csv('data/test_data.csv', index=False)
+        train.to_csv('data/train_data_last_less.csv', index=False)
+        test.to_csv('data/test_data_last_less.csv', index=False)
 
         return train, test
 
@@ -297,6 +297,53 @@ class FeatureAnalyzer:
         plt.show()
         pass
 
+    # TODO Implement (boxplots and dotplots in comparison to target variable)
+    def correlation_plots(self, dataset=None):
+        if dataset is None:
+            dataset = self.df.copy()
+
+        numeric_columns = dataset.select_dtypes(include=['float64', 'int64']).columns
+        numeric_columns = [col for col in numeric_columns if len(dataset[col].unique()) > 2]
+
+        # Set the style of seaborn
+        sn.set(style="whitegrid")
+
+        # Set up the matplotlib figure for box plots
+        num_plots_per_row = 3  # Adjust this based on your preference
+        num_rows = len(numeric_columns) // num_plots_per_row + 1
+
+        plt.figure(figsize=(15, 5 * num_rows))
+
+        # Iterate through each numeric column and create box plots
+        for i, column in enumerate(numeric_columns, 1):
+            plt.subplot(num_rows, num_plots_per_row, i)
+            sn.boxplot(x='churn', y=column, data=dataset)
+            plt.title(f'Boxplot of {column} by Churn')
+
+        # Adjust layout
+        plt.tight_layout()
+        plt.show()
+
+        # Set up the matplotlib figure for dot plots
+        plt.figure(figsize=(15, 5 * num_rows))
+
+        # Iterate through each numeric column and create dot plots
+        for i, column in enumerate(numeric_columns, 1):
+            plt.subplot(num_rows, num_plots_per_row, i)
+            sn.stripplot(x='churn', y=column, data=dataset, jitter=True, alpha=0.5)
+            plt.title(f'Dot plot of {column} by Churn')
+
+        # Adjust layout
+        plt.tight_layout()
+        plt.show()
+
+        numeric_columns = numeric_columns.insert(0, 'churn')
+
+        # Create a pair plot
+        sn.set_style("whitegrid")  # Set the style here
+        sn.pairplot(dataset[numeric_columns], hue='Churn', markers=["o", "s"], diag_kind='hist', height=2.5)
+        plt.show()
+
     def visualize_data(self) -> None:
         fig, axarr = plt.subplots(2, 2, figsize=(20, 12))
         sn.boxplot(y='gender', x='churn', hue='churn', data=self.df, ax=axarr[0][0])
@@ -349,6 +396,8 @@ if __name__ == '__main__':
     analyzer.get_dataset_characteristics()
     outliers_cols = analyzer.identify_outliers()
     analyzer.visualize_data()
+    # TODO
+    # analyzer.correlation_plots()
     # preparator.handle_outliers(outliers_cols)
 
     # ----- Prepare dummy dataset for attribute importance analysis
@@ -358,10 +407,11 @@ if __name__ == '__main__':
     attrs_to_prune = analyzer.tree_feature_importance_analysis(0.035, label_encoded_dataset)
 
     # ---- Prepare parsimounious dataset with fewer variables
-    pruned_attrs = analyzer.tree_feature_importance_analysis(0.05, label_encoded_dataset)
+    # pruned_attrs = analyzer.tree_feature_importance_analysis(0.05, label_encoded_dataset)
+    pruned_attrs = analyzer.tree_feature_importance_analysis(0.047, label_encoded_dataset)
     label_encoded_dataset = preparator.drop_attributes(pruned_attrs, label_encoded_dataset)
     label_encoded_dataset = preparator.discretize_variables(label_encoded_dataset)
-    # train_data, test_data = preparator.split_dataset(label_encoded_dataset)
+    train_data, test_data = preparator.split_dataset(label_encoded_dataset)
 
     # ----- Prepare actual dataset
     preparator.drop_attributes(attrs_to_prune)

@@ -7,6 +7,8 @@
     This file contains scripts for benchmarking the value of
     ML model. In this case, evaluation of logistic regression is performed.
 """
+from matplotlib import pyplot
+
 'External packages'
 import argparse
 import pandas as pd
@@ -27,9 +29,9 @@ from sklearn.metrics import roc_curve, auc
 
 def parse_args() -> argparse.Namespace:
     args = argparse.ArgumentParser()
-    args.add_argument('--csv-path-train', type=str, default='data/train_data_labels.csv',
+    args.add_argument('--csv-path-train', type=str, default='data/train_data_last_less.csv',
                       help='Path to csv file of train dataset.')
-    args.add_argument('--csv-path-test', type=str, default='data/test_data_labels.csv',
+    args.add_argument('--csv-path-test', type=str, default='data/test_data_last_less.csv',
                       help='Path to csv file of test dataset.')
 
     return args.parse_args()
@@ -54,6 +56,20 @@ class BenchmarkTrainer:
 
         # Train the model
         logistic_model.fit(x_train, y_train)
+        # ---------------------
+        print(f'-----------------------------------')
+        print(f'---Importance analysis with linreg---------')
+
+        importance = logistic_model.coef_
+        # summarize feature importance
+        for i, v in enumerate(importance[0]):
+            print('Feature: %d, Score: %.5f' % (i, v))
+        # plot feature importance
+        # pyplot.bar([x for x in range(len(importance))], importance)
+        # pyplot.show()
+        print(f'-----------------------------------')
+
+        # ---------------------
 
         y_pred = logistic_model.predict(x_test)
 

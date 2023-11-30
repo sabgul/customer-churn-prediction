@@ -32,9 +32,9 @@ from sklearn.metrics import (
 
 def parse_args() -> argparse.Namespace:
     args = argparse.ArgumentParser()
-    args.add_argument('--csv-path-train', type=str, default='data/train_data_labels.csv',
+    args.add_argument('--csv-path-train', type=str, default='data/train_data_last_less.csv',
                       help='Path to csv file of train dataset.')
-    args.add_argument('--csv-path-test', type=str, default='data/test_data_labels.csv',
+    args.add_argument('--csv-path-test', type=str, default='data/test_data_last_less.csv',
                       help='Path to csv file of test dataset.')
     args.add_argument('--net-structure-path', type=str, default='models/net_structure.pkl',
                       help='Path to file with trained structure of Bayesian net.')
