@@ -7,9 +7,6 @@
     This file contains scripts for training and evaluating
     the performance of SVM on customer churn data.
 """
-import numpy as np
-from pgmpy.inference import VariableElimination
-from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 
 'External packages'

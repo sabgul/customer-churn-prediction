@@ -7,7 +7,6 @@
     This file contains scripts for benchmarking the value of
     ML model. In this case, evaluation of logistic regression is performed.
 """
-from matplotlib import pyplot
 
 'External packages'
 import argparse
@@ -15,11 +14,6 @@ import pandas as pd
 import numpy as np
 from typing import Union, Tuple
 import seaborn as sn
-import matplotlib.pyplot as plt
-from typing import Optional
-from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, precision_recall_curve, \
     average_precision_score, precision_score, recall_score, f1_score, matthews_corrcoef
@@ -64,12 +58,7 @@ class BenchmarkTrainer:
         # summarize feature importance
         for i, v in enumerate(importance[0]):
             print('Feature: %d, Score: %.5f' % (i, v))
-        # plot feature importance
-        # pyplot.bar([x for x in range(len(importance))], importance)
-        # pyplot.show()
         print(f'-----------------------------------')
-
-        # ---------------------
 
         y_pred = logistic_model.predict(x_test)
 
@@ -99,6 +88,7 @@ class BenchmarkTrainer:
 
         precision, recall, _ = precision_recall_curve(y_test, logistic_model.predict_proba(x_test)[:, 1])
         average_precision = average_precision_score(y_test, y_pred)
+
         # Plot Precision-Recall Curve
         plt.step(recall, precision, color='b', alpha=0.2, where='post')
         plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')

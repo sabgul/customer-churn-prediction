@@ -7,8 +7,6 @@
     This file contains helper scripts for preprocessing of datasets
     and exploratory data analysis.
 """
-import numpy as np
-from scipy.stats import chi2_contingency
 
 'External packages'
 import argparse
@@ -52,8 +50,6 @@ class DatasetPreparator:
 
         # Check for missing values
         missing_values = dataset.isnull().sum()
-
-        # Display columns with missing values
         print(f'Columns with missing values: {missing_values[missing_values > 0]}\n')
 
         dataset = (
@@ -175,7 +171,6 @@ class DatasetPreparator:
         train = pd.concat([x_train, y_train], axis=1)
         test = pd.concat([x_test, y_test], axis=1)
 
-        # commented to avoid generating new distribution
         train.to_csv('data/train_data_last_less.csv', index=False)
         test.to_csv('data/test_data_last_less.csv', index=False)
 
@@ -249,7 +244,6 @@ class FeatureAnalyzer:
 
     def identify_outliers(self) -> [str]:
         outliers_columns = []
-        # num_cols = ['monthlycharges', 'tenure', 'totalcharges', 'seniorcitizen']
 
         self.df['totalcharges'] = pd.to_numeric(self.df['totalcharges'], errors='coerce')
         self.df['monthlycharges'] = pd.to_numeric(self.df['monthlycharges'], errors='coerce')
@@ -303,7 +297,6 @@ class FeatureAnalyzer:
         plt.show()
         pass
 
-    # TODO Implement (boxplots and dotplots in comparison to target variable)
     def correlation_plots(self, dataset=None):
         if dataset is None:
             dataset = self.df.copy()
@@ -311,10 +304,7 @@ class FeatureAnalyzer:
         numeric_columns = dataset.select_dtypes(include=['float64', 'int64']).columns
         numeric_columns = [col for col in numeric_columns if len(dataset[col].unique()) > 2]
 
-        # Set the style of seaborn
         sn.set(style="whitegrid")
-
-        # Set up the matplotlib figure for box plots
         num_plots_per_row = 3
         num_rows = 1
 
@@ -394,7 +384,6 @@ if __name__ == '__main__':
     outliers_cols = analyzer.identify_outliers()
     analyzer.visualize_data()
     analyzer.correlation_plots()
-    # preparator.handle_outliers(outliers_cols)
 
     # ----- Prepare dummy dataset for attribute importance analysis
     label_encoded_dataset = preparator.label_encode_categorical()
@@ -409,7 +398,7 @@ if __name__ == '__main__':
     # Commented to prevent generation of new dataset:
     # train_data, test_data = preparator.split_dataset(label_encoded_dataset)
 
-    # ----- Prepare actual dataset
+    # ----- Prepare larger dataset
     preparator.drop_attributes(attrs_to_prune)
     preparator.remove_missing_values()
     preparator.discretize_variables()
