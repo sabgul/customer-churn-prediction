@@ -333,14 +333,15 @@ class BayesianEvaluator:
         true_labels = self.test_df['Churn'].values
         for index, row in self.test_df.iterrows():
             evidence = {variable: row[variable] for variable in model.nodes() if variable != 'Churn'}
+            # print(f"Evidence: {evidence}")
             prediction = inference.query(variables=[self.target_variable], evidence=evidence, joint=False)
             discrete_factor = list(prediction.values())[0]
-            for i in prediction.values():
-                print(f' --------- {i}')
+            # for i in prediction.values():
+            #     print(f' --------- {i}')
             probability_churn_1 = discrete_factor.values[1]
             # print(f' >>>>>> Probability_churn_1: {probability_churn_1}')
             # probabilities.append(probability_churn_1)
-
+            #  TODO probability_churn is NaN so is always assigns 0
             predicted_label = 1 if probability_churn_1 >= 0.5 else 0
             probabilities.append(probability_churn_1)
             predictions.append(predicted_label)
