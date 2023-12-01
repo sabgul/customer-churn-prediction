@@ -22,7 +22,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, precision_recall_curve, \
-    average_precision_score
+    average_precision_score, precision_score, recall_score, f1_score, matthews_corrcoef
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 
@@ -132,6 +132,34 @@ class BenchmarkEvaluator:
         class_report = classification_report(self.y_test, self.y_pred)
         print(f'Classification Report:\n{class_report}')
         print(f'-----------------------------')
+
+        precision = precision_score(self.y_test, self.y_pred)
+        print("Precision:", precision)
+        print(f'-----------------------------')
+
+        recall = recall_score(self.y_test, self.y_pred)
+        print("Recall:", recall)
+        print(f'-----------------------------')
+
+        f1 = f1_score(self.y_test, self.y_pred)
+        print("F1 Score:", f1)
+        print(f'-----------------------------')
+
+        specificity = conf_matrix[1, 1] / (conf_matrix[1, 0] + conf_matrix[1, 1])
+        print(f"Specificity: {specificity}")
+        print(f'-----------------------------')
+
+        # Calculate Matthews Correlation Coefficient (MCC)
+        mcc = matthews_corrcoef(self.y_test, self.y_pred)
+        print(f"MCC: {mcc}")
+        print(f'-----------------------------')
+
+        plt.figure(figsize=(6, 4))
+        sn.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.title('Confusion Matrix for Logistic regression')
+        plt.show()
 
 
 if __name__ == '__main__':

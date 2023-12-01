@@ -7,6 +7,8 @@
     This file contains helper scripts for preprocessing of datasets
     and exploratory data analysis.
 """
+import numpy as np
+from scipy.stats import chi2_contingency
 
 'External packages'
 import argparse
@@ -66,7 +68,6 @@ class DatasetPreparator:
 
         return dataset
 
-    # TODO handle outliers
     def handle_outliers(self, outliers_cols) -> Optional[pd.DataFrame]:
         # if outliers are present, process them
         return self.df
@@ -241,6 +242,11 @@ class FeatureAnalyzer:
         print(f'-----------------------------')
         print(f"Min, max and mean according to the dependent variable:\n{self.df.groupby('churn').agg({'tenure': ['min', 'mean', 'max'], 'monthlycharges': ['min', 'mean', 'max'], 'totalcharges': ['min', 'mean', 'max']})}")
 
+        sn.countplot(x='churn', data=self.df)
+        plt.title('Churn Distribution')
+        plt.show()
+
+
     def identify_outliers(self) -> [str]:
         outliers_columns = []
         # num_cols = ['monthlycharges', 'tenure', 'totalcharges', 'seniorcitizen']
@@ -309,8 +315,8 @@ class FeatureAnalyzer:
         sn.set(style="whitegrid")
 
         # Set up the matplotlib figure for box plots
-        num_plots_per_row = 3  # Adjust this based on your preference
-        num_rows = len(numeric_columns) // num_plots_per_row + 1
+        num_plots_per_row = 3
+        num_rows = 1
 
         plt.figure(figsize=(15, 5 * num_rows))
 
@@ -335,13 +341,6 @@ class FeatureAnalyzer:
 
         # Adjust layout
         plt.tight_layout()
-        plt.show()
-
-        numeric_columns = numeric_columns.insert(0, 'churn')
-
-        # Create a pair plot
-        sn.set_style("whitegrid")  # Set the style here
-        sn.pairplot(dataset[numeric_columns], hue='Churn', markers=["o", "s"], diag_kind='hist', height=2.5)
         plt.show()
 
     def visualize_data(self) -> None:
@@ -384,8 +383,6 @@ class FeatureAnalyzer:
 
         return selected_features
 
-    # def minimize_variables(self):
-
 
 if __name__ == '__main__':
     args = parse_args()
@@ -396,8 +393,7 @@ if __name__ == '__main__':
     analyzer.get_dataset_characteristics()
     outliers_cols = analyzer.identify_outliers()
     analyzer.visualize_data()
-    # TODO
-    # analyzer.correlation_plots()
+    analyzer.correlation_plots()
     # preparator.handle_outliers(outliers_cols)
 
     # ----- Prepare dummy dataset for attribute importance analysis
@@ -406,17 +402,17 @@ if __name__ == '__main__':
     analyzer.correlation_analysis(label_encoded_dataset)
     attrs_to_prune = analyzer.tree_feature_importance_analysis(0.035, label_encoded_dataset)
 
-    # ---- Prepare parsimounious dataset with fewer variables
-    # pruned_attrs = analyzer.tree_feature_importance_analysis(0.05, label_encoded_dataset)
+    # ---- Prepare parsimonious dataset with fewer variables
     pruned_attrs = analyzer.tree_feature_importance_analysis(0.047, label_encoded_dataset)
     label_encoded_dataset = preparator.drop_attributes(pruned_attrs, label_encoded_dataset)
     label_encoded_dataset = preparator.discretize_variables(label_encoded_dataset)
-    train_data, test_data = preparator.split_dataset(label_encoded_dataset)
+    # Commented to prevent generation of new dataset:
+    # train_data, test_data = preparator.split_dataset(label_encoded_dataset)
 
     # ----- Prepare actual dataset
     preparator.drop_attributes(attrs_to_prune)
     preparator.remove_missing_values()
     preparator.discretize_variables()
     final_data = preparator.one_hot_encoding_categorical()
-    # Next line is commented so that we prevent generation of new datasets
+    # Commented to prevent generation of new dataset:
     # train_data, test_data = preparator.split_dataset()

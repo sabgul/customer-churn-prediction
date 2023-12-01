@@ -26,7 +26,7 @@ from sklearn.metrics import (
     f1_score,
     roc_auc_score,
     roc_curve,
-    auc, classification_report, precision_recall_curve, average_precision_score,
+    auc, classification_report, precision_recall_curve, average_precision_score, matthews_corrcoef,
 )
 
 
@@ -64,8 +64,6 @@ class SVMTrainer:
         y_test = self.test_df[self.target_variable]
 
         # Initialize SVM model
-        # rbf, linear, sigmoid, poly, C=1.0
-        # linear kernel performs best so far
         svm_model = SVC(kernel='linear', C=7.0, probability=True)
 
         # Train the model
@@ -107,12 +105,33 @@ class SVMEvaluator:
         print(f'Confusion Matrix:\n{conf_matrix}')
         print(f'-----------------------------')
 
+        precision = precision_score(y_test, y_pred)
+        print("Precision:", precision)
+        print(f'-----------------------------')
+
+        recall = recall_score(y_test, y_pred)
+        print("Recall:", recall)
+        print(f'-----------------------------')
+
+        f1 = f1_score(y_test, y_pred)
+        print("F1 Score:", f1)
+        print(f'-----------------------------')
+
+        specificity = conf_matrix[1, 1] / (conf_matrix[1, 0] + conf_matrix[1, 1])
+        print(f"Specificity: {specificity}")
+        print(f'-----------------------------')
+
+        # Calculate Matthews Correlation Coefficient (MCC)
+        mcc = matthews_corrcoef(y_test, y_pred)
+        print(f"MCC: {mcc}")
+        print(f'-----------------------------')
+
         # Plot confusion matrix
         plt.figure(figsize=(6, 4))
         sn.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', cbar=False)
         plt.xlabel('Predicted')
         plt.ylabel('True')
-        plt.title('Confusion Matrix')
+        plt.title('Confusion Matrix for SVM')
         plt.show()
 
         x_test = self.test_df.drop(self.target_variable, axis=1)
