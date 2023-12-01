@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from typing import Optional
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 
 
 def parse_args() -> argparse.Namespace:
@@ -176,6 +176,25 @@ class DatasetPreparator:
 
         return train, test
 
+    # Function splits dataset into k-folds, to be used in
+    # k-fold cross validation of chosen ML models
+    def split_and_save_k_folds(self, k, dataset=None):
+        if dataset is None:
+            dataset = self.df.copy()
+
+        # Create KFold splitter
+        kf = KFold(n_splits=k, shuffle=True, random_state=42)
+
+        # Iterate over each fold
+        for i, (train_index, test_index) in enumerate(kf.split(dataset)):
+            # Split data into train and test sets
+            train_data = dataset.iloc[train_index]
+            test_data = dataset.iloc[test_index]
+
+            # Save train and test sets to CSV
+            train_data.to_csv(f'data/k-folds/train_data_{i + 1}.csv', index=False)
+            test_data.to_csv(f'data/k-folds/test_data_{i + 1}.csv', index=False)
+
 
 class FeatureAnalyzer:
     """
@@ -240,7 +259,6 @@ class FeatureAnalyzer:
         sn.countplot(x='churn', data=self.df)
         plt.title('Churn Distribution')
         plt.show()
-
 
     def identify_outliers(self) -> [str]:
         outliers_columns = []
@@ -395,6 +413,9 @@ if __name__ == '__main__':
     pruned_attrs = analyzer.tree_feature_importance_analysis(0.047, label_encoded_dataset)
     label_encoded_dataset = preparator.drop_attributes(pruned_attrs, label_encoded_dataset)
     label_encoded_dataset = preparator.discretize_variables(label_encoded_dataset)
+    # Prepare k datasets for perfoming k-fold cross validation
+    preparator.split_and_save_k_folds(5, label_encoded_dataset)
+
     # Commented to prevent generation of new dataset:
     # train_data, test_data = preparator.split_dataset(label_encoded_dataset)
 

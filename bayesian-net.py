@@ -27,9 +27,10 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
-    roc_auc_score,
     roc_curve,
-    auc, classification_report, average_precision_score, matthews_corrcoef,
+    auc,
+    classification_report,
+    matthews_corrcoef
 )
 from pgmpy.inference import BeliefPropagation
 from pgmpy.metrics import correlation_score, log_likelihood_score, structure_score, BayesianModelProbability
